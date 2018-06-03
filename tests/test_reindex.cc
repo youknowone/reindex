@@ -18,7 +18,7 @@ class testable_slit : public reindex::slit<_T, _ContainerType> {
 
  public:
   using slit::_container;
-  using slit::_reindex;
+  using slit::_convert;
   using slit::_step;
 };
 
@@ -48,9 +48,16 @@ void _test_slit(T& slit) {
       typename T::container_type>*>(&slit);
   assert(&vslit.at(1000) == &slit.at(1000));
 
-  assert(vslit._reindex(1000) == 0);
-  assert(vslit._reindex(1005) == 1);
-  assert(vslit._reindex(2000) == (2000 - 1000) / 5);
+  assert(vslit._convert(1000) == 0);
+  assert(vslit._convert(1005) == 1);
+  assert(vslit._convert(2000) == (2000 - 1000) / 5);
+
+  auto& x1 = slit[1000];
+  auto& x2 = slit[2000];
+  slit.reindex(2000, 10);
+  assert(&x1 == &slit[2000]);
+  assert(&x2 != &slit[2000]);
+  slit.reindex(1000, 5);
 }
 
 TEST(reindex, slit_containers) {

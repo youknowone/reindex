@@ -10,7 +10,7 @@ class _resubscript_base {
   class _public_impl : public _Impl {
    public:
     using _Impl::_container;
-    using _Impl::_reindex;
+    using _Impl::_convert;
   };
 
  protected:
@@ -33,6 +33,9 @@ class _resubscript_base {
   using iterator = typename bare_container_type::iterator;
   using const_iterator = typename bare_container_type::const_iterator;
 
+  inline constexpr key_type convert_key(user_key_type user_pos) const noexcept {
+    return this->_this()->_convert(user_pos);
+  }
   inline constexpr bare_container_type& container() noexcept {
     return _this()->_container;
   }
@@ -40,16 +43,16 @@ class _resubscript_base {
     return _this()->_container;
   }
   inline constexpr reference at(user_key_type index) {
-    return container().at(_this()->_reindex(index));
+    return container().at(_this()->_convert(index));
   }
   inline constexpr const_reference at(user_key_type index) const {
-    return container().at(_this()->_reindex(index));
+    return container().at(_this()->_convert(index));
   }
   inline constexpr reference operator[](user_key_type index) {
-    return container().operator[](_this()->_reindex(index));
+    return container().operator[](_this()->_convert(index));
   }
   inline constexpr const_reference operator[](user_key_type index) const {
-    return container().operator[](_this()->_reindex(index));
+    return container().operator[](_this()->_convert(index));
   }
 };
 
@@ -93,38 +96,42 @@ class reindex_base
 
   template <class... Args>
   inline iterator emplace(user_key_type user_pos, Args&&... args) {
-    auto pos = this->_this()->_reindex(user_pos);
-    return this->container().emplace(this->container().begin() + pos, args...);
+    auto& container = this->container();
+    return container.emplace(
+        container.begin() + this->convert_key(user_pos), args...);
   }
   inline iterator insert(user_key_type user_pos, const value_type& value) {
-    auto pos = this->_this()->_reindex(user_pos);
-    return this->container().insert(this->container().begin() + pos, value);
+    auto& container = this->container();
+    return container.insert(
+        container.begin() + this->convert_key(user_pos), value);
   }
   inline iterator insert(user_key_type user_pos, value_type&& value) {
-    auto pos = this->_this()->_reindex(user_pos);
-    return this->container().insert(
-        this->container().begin() + pos, std::move(value));
+    auto& container = this->container();
+    return container.insert(
+        container.begin() + this->convert_key(user_pos), std::move(value));
   }
   template <class InputIt>
   inline iterator insert(user_key_type user_pos, InputIt first, InputIt last) {
-    auto pos = this->_this()->_reindex(user_pos);
-    return this->container().insert(
-        this->container().begin() + pos, first, last);
+    auto& container = this->container();
+    return container.insert(
+        container.begin() + this->convert_key(user_pos), first, last);
   }
   inline iterator insert(
       user_key_type user_pos, std::initializer_list<value_type> ilist) {
-    auto pos = this->_this()->_reindex(user_pos);
-    return this->container().insert(this->container().begin() + pos, ilist);
+    auto& container = this->container();
+    return container.insert(
+        container.begin() + this->convert_key(user_pos), ilist);
   }
   inline iterator erase(user_key_type user_pos) {
-    auto pos = this->_this()->_reindex(user_pos);
-    return this->container().erase(this->container().begin() + pos);
+    auto& container = this->container();
+    return container.erase(container.begin() + this->convert_key(user_pos));
   }
   inline iterator erase(user_key_type user_first, user_key_type user_last) {
-    auto first = this->_this()->_reindex(user_first);
-    auto last = this->_this()->_reindex(user_last);
-    const auto begin = this->contaienr().begin();
-    return this->container().erase(begin + first, begin + last);
+    auto first = this->convert_key(user_first);
+    auto last = this->convert_key(user_last);
+    auto& container = this->container();
+    const auto begin = container.begin();
+    return container().erase(begin + first, begin + last);
   }
 };
 
@@ -133,8 +140,8 @@ class bijective_mixin {
   class _public_impl : public _base::type {
    public:
     using _base::type::_container;
-    using _base::type::_reindex;
-    using _base::type::_reverse_reindex;
+    using _base::type::_convert;
+    using _base::type::_reverse_convert_key;
   };
 
  protected:
@@ -148,12 +155,16 @@ class bijective_mixin {
 template <typename _base>
 class monotonic_mixin : public bijective_mixin<_base> {
  public:
+  inline constexpr typename _base::user_key_type reverse_convert_key(
+      typename _base::key_type pos) const noexcept {
+    return this->_this()->_reverse_convert_key(pos);
+  }
   inline constexpr typename _base::user_key_type begin_index() const noexcept {
-    return this->_this()->_reverse_reindex(0);
+    return this->reverse_convert_key(0);
   }
   inline constexpr typename _base::user_key_type end_index() const noexcept {
     auto& container = this->_this()->container();
-    return this->_this()->_reverse_reindex(container.size());
+    return this->reverse_convert_key(container.size());
   }
 };
 
@@ -173,7 +184,7 @@ class remap_base
   using size_type = typename _base::size_type;
   using user_key_type = typename _base::user_key_type;
   inline size_type erase(const user_key_type& user_key) {
-    return this->container().erase(this->_this()->_reindex(user_key));
+    return this->container().erase(this->_this()->_convert(user_key));
   }
 };
 
@@ -207,9 +218,10 @@ class rebase : public reindex_base<
   template <typename... Args>
   constexpr rebase(key_type offset, Args... args)
       : _offset(offset), _container(args...) {}
+  inline void reindex(key_type offset) noexcept { this->_offset = offset; }
 
  protected:
-  inline constexpr const key_type _reindex(user_key_type user_index) const
+  inline constexpr const key_type _convert(user_key_type user_index) const
       noexcept {
     key_type index = user_index - this->_offset;
 #ifdef DEBUG
@@ -217,7 +229,7 @@ class rebase : public reindex_base<
 #endif
     return index;
   }
-  inline constexpr const user_key_type _reverse_reindex(key_type index) const
+  inline constexpr const user_key_type _reverse_convert_key(key_type index) const
       noexcept {
     user_key_type user_index = this->_offset + index;
     return user_index;
@@ -256,9 +268,13 @@ class slit : public reindex_base<
   template <typename... Args>
   constexpr slit(key_type offset, size_type step, Args... arg)
       : _offset(offset), _step(step), _container(arg...) {}
+  inline void reindex(key_type offset, size_type step) noexcept {
+    this->_offset = offset;
+    this->_step = step;
+  }
 
  protected:
-  inline constexpr const size_type _reindex(user_key_type user_index) const
+  inline constexpr const size_type _convert(user_key_type user_index) const
       noexcept {
     key_type index = (user_index - this->_offset) / this->_step;
 #ifdef DEBUG
@@ -267,7 +283,7 @@ class slit : public reindex_base<
 #endif
     return index;
   }
-  inline constexpr const user_key_type _reverse_reindex(key_type index) const
+  inline constexpr const user_key_type _reverse_convert_key(key_type index) const
       noexcept {
     user_key_type user_index = this->_offset + (index * this->_step);
     return user_index;
