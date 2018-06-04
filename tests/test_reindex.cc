@@ -18,8 +18,7 @@ class testable_slit : public reindex::slit<_T, _ContainerType> {
 
  public:
   using slit::_container;
-  using slit::_convert;
-  using slit::_step;
+  using slit::_converter;
 };
 
 struct X {
@@ -29,7 +28,7 @@ struct X {
 
 TEST(reindex, slit2) {
   using container_type = std::unordered_map<std::string, char>;
-  auto table = reindex::rebase<container_type>(100);
+  auto table = reindex::rebase<container_type>({100});
 }
 
 template <typename T>
@@ -48,23 +47,23 @@ void _test_slit(T& slit) {
       typename T::container_type>*>(&slit);
   assert(&vslit.at(1000) == &slit.at(1000));
 
-  assert(vslit._convert(1000) == 0);
-  assert(vslit._convert(1005) == 1);
-  assert(vslit._convert(2000) == (2000 - 1000) / 5);
+  assert(vslit.convert_key(1000) == 0);
+  assert(vslit.convert_key(1005) == 1);
+  assert(vslit.convert_key(2000) == (2000 - 1000) / 5);
 
   auto& x1 = slit[1000];
   auto& x2 = slit[2000];
-  slit.reindex(2000, 10);
+  slit.converter() = {2000, 10};
   assert(&x1 == &slit[2000]);
   assert(&x2 != &slit[2000]);
-  slit.reindex(1000, 5);
+  slit.converter() = {1000, 5};
 }
 
 TEST(reindex, slit_containers) {
   // **Example** slit for various containers
   {
     // default: slit for std::vector<X>
-    auto slit = reindex::slit<X>(1000, 5, 500);
+    auto slit = reindex::slit<X>({1000, 5}, 500);
     _test_slit(slit);
     slit.emplace(1020, X{12, 24});
     assert(slit[1020].a == 12);
@@ -77,12 +76,12 @@ TEST(reindex, slit_containers) {
   {
     // **Example** specify a container type not to use default container
     // using array
-    auto slit = reindex::slit<X, std::array<X, 500>>(1000, 5);
+    auto slit = reindex::slit<X, std::array<X, 500>>({1000, 5});
     _test_slit(slit);
   }
   {
     // **Example** slit for std::deque<X>
-    auto slit = reindex::slit<X, std::deque<X>>(1000, 5, 500);
+    auto slit = reindex::slit<X, std::deque<X>>({1000, 5}, 500);
     _test_slit(slit);
   }
 }
@@ -91,16 +90,16 @@ TEST(reindex, slit_refs) {
   // **Example** slit for included storage vs referenced storage
   using container_type = std::vector<X>;
   {
-    auto slit = reindex::slit<X>(1000, 5);
+    auto slit = reindex::slit<X, container_type>({1000, 5});
     slit.container().resize(500);
     _test_slit(slit);
   }
   {
     container_type container(500);
-    auto slit1 = reindex::slit<X, container_type&>(1000, 5, container);
+    auto slit1 = reindex::slit<X, container_type&>({1000, 5}, container);
     _test_slit(slit1);
     auto slit2 =
-        reindex::slit<X, container_type>(1000, 5, std::move(container));
+        reindex::slit<X, container_type>({1000, 5}, std::move(container));
     _test_slit(slit2);
   }
 }
@@ -119,15 +118,15 @@ void _test_rebase(T& rebase) {
 TEST(reindex, rebase) {
   using container_type = std::array<X, 500>;
   {
-    auto rebase = reindex::rebase<X, container_type>(1000);
+    auto rebase = reindex::rebase<X, container_type>({1000});
     _test_rebase(rebase);
   }
   {
     container_type container;
-    auto rebase1 = reindex::rebase<X, container_type&>(1000, container);
+    auto rebase1 = reindex::rebase<X, container_type&>({1000}, container);
     _test_rebase(rebase1);
     auto rebase2 =
-        reindex::rebase<X, container_type>(1000, std::move(container));
+        reindex::rebase<X, container_type>({1000}, std::move(container));
     _test_rebase(rebase2);
   }
 }
