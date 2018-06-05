@@ -131,4 +131,12 @@ TEST(reindex, rebase) {
   }
 }
 
+TEST(reindx, converter_type) {
+  reindex::slit_converter<size_t, int32_t> converter{-100, 5};
+  assert(converter.convert(-100) == 0);
+  assert(converter.convert(0) == 20);
+  assert(converter.revert(0) == -100);
+  assert(converter.revert(40) == 100);
+}
+
 }  // namespace

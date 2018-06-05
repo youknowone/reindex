@@ -65,7 +65,7 @@ struct _rebase_converter {
   using key_type = _KeyType;
   using user_key_type = _UserKeyType;
 
-  key_type _offset;
+  user_key_type offset;
 };
 
 template <typename _KeyType = size_t, typename _UserKeyType = _KeyType>
@@ -86,11 +86,11 @@ class rebase_converter : public converter_base<
  protected:
   inline constexpr const key_type _convert(user_key_type user_index) const
       noexcept {
-    key_type index = user_index - this->_offset;
+    key_type index = user_index - this->offset;
     return index;
   }
   inline constexpr const user_key_type _revert(key_type index) const noexcept {
-    user_key_type user_index = this->_offset + index;
+    user_key_type user_index = this->offset + index;
     return user_index;
   }
 };
@@ -100,8 +100,8 @@ struct _slit_converter {
   using key_type = _KeyType;
   using user_key_type = _UserKeyType;
 
-  key_type _offset;
-  key_type _step;
+  user_key_type offset;
+  user_key_type step;
 };
 
 template <typename _KeyType = size_t, typename _UserKeyType = _KeyType>
@@ -122,14 +122,14 @@ class slit_converter : public converter_base<
  protected:
   inline constexpr const key_type _convert(user_key_type user_index) const
       noexcept {
-    key_type index = (user_index - this->_offset) / this->_step;
+    key_type index = (user_index - this->offset) / this->step;
 #ifdef DEBUG
-    assert(user_index % this->_step == 0);
+    assert(user_index % this->step == 0);
 #endif
     return index;
   }
   inline constexpr const user_key_type _revert(key_type index) const noexcept {
-    user_key_type user_index = this->_offset + (index * this->_step);
+    user_key_type user_index = this->offset + (index * this->step);
     return user_index;
   }
 };
@@ -205,7 +205,16 @@ class resubscript_base
 
  public:
   using container_type = _ContainerType;
+  using converter_type = _ConverterType;
   using _base::_base;
+  // data fields
+  converter_type _converter;
+  container_type _container;
+  // end of data fields
+  template <typename... Args>
+  constexpr resubscript_base(converter_type converter, Args... arg)
+      : _converter(converter), _container(arg...) {}
+
   resubscript_base& operator=(resubscript_base&&) = default;
 };
 
@@ -216,7 +225,15 @@ class resubscript_base<_Impl, _ContainerType&, _ConverterType>
 
  public:
   using container_type = _ContainerType&;
+  using converter_type = _ConverterType;
   using _base::_base;
+  // data fields
+  converter_type _converter;
+  container_type _container;
+  // end of data fields
+  constexpr resubscript_base(
+      converter_type converter, container_type& container) noexcept
+      : _converter(converter), _container(container) {}
   resubscript_base& operator=(const resubscript_base&) = default;
 };
 
@@ -238,16 +255,7 @@ class reindex_base
   using value_type = typename _base::value_type;
   static_assert(std::is_same<index_type, typename _base::size_type>::value);
 
-  // data fields
-  converter_type _converter;
-  container_type _container;
-  // end of data fields
-  constexpr reindex_base(
-      converter_type converter, container_type& container) noexcept
-      : _converter(converter), _container(container) {}
-  template <typename... Args>
-  constexpr reindex_base(converter_type converter, Args... arg)
-      : _converter(converter), _container(arg...) {}
+  using _base::_base;
 
   template <class... Args>
   inline iterator emplace(user_index_type user_pos, Args&&... args) {
