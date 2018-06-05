@@ -29,6 +29,7 @@ add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
 #  "${gtest_SOURCE_DIR}/include" "${gmock_SOURCE_DIR}/include")
 target_include_directories(gtest_main SYSTEM BEFORE INTERFACE
     "${gtest_SOURCE_DIR}/include")
+# end of googletest
 
 add_custom_target(
     lint
@@ -36,10 +37,29 @@ add_custom_target(
     -i
     */*.hh */*.cc)
 
+add_custom_target(
+    lcov
+    COMMAND lcov
+    --directory . --capture
+    --output-file coverage.info 
+    &&
+    lcov --remove coverage.info '/usr/*' '*/googletest-*/*' '/Applications/*' --output-file coverage.info
+    &&
+    lcov --list coverage.info
+    )
+
 project(reindex)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# coverage
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(CodeCoverage)
+APPEND_COVERAGE_COMPILER_FLAGS()
+set(COVERAGE_EXCLUDES '*/googletest-*/*' '/usr/*' '/Applications/*')
+#setup_target_for_coverage(${PROJECT_NAME}_coverage tests coverage)
+
 
 include_directories(./)
 if (APPLE)
