@@ -124,7 +124,7 @@ class slit_converter : public converter_base<
       noexcept {
     key_type index = (user_index - this->offset) / this->step;
 #ifdef DEBUG
-    assert(user_index % this->step == 0);
+    assert((user_index - this->offset) % this->step == 0);
 #endif
     return index;
   }
