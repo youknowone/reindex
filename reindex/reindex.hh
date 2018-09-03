@@ -1,3 +1,5 @@
+#ifndef __REINDEX_HH__
+#define __REINDEX_HH__
 
 #include <cassert>
 
@@ -375,3 +377,5 @@ class slit : public reindex_base<
 static_assert(std::is_same<slit<int>::type, slit<int>>::value);
 
 }  // namespace reindex
+
+#endif
