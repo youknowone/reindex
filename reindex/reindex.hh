@@ -138,6 +138,36 @@ class slit_converter : public converter_base<
     }
 };
 
+template <typename _KeyType, typename _UserKeyType>
+struct _shiftslit_converter {
+    using key_type = _KeyType;
+    using user_key_type = _UserKeyType;
+
+    user_key_type offset;
+    size_t shift;
+};
+
+template <typename _KeyType = size_t, typename _UserKeyType = _KeyType>
+class shiftslit_converter
+        : public converter_base<
+                  _shiftslit_converter<_KeyType, _UserKeyType>,
+                  shiftslit_converter<_KeyType, _UserKeyType>> {
+    using _base = converter_base<
+            _shiftslit_converter<_KeyType, _UserKeyType>,
+            shiftslit_converter<_KeyType, _UserKeyType>>;
+
+   public:
+    using typename _base::key_type;
+    using typename _base::user_key_type;
+
+   protected:
+    inline constexpr const key_type _convert(user_key_type user_index) const
+            noexcept {
+        key_type index = (user_index - this->offset) >> this->shift;
+        return index;
+    }
+};
+
 template <typename _Impl, typename _BareContainerType, typename _ConverterType>
 class _resubscript_base {
     class _public_impl : public _Impl {
